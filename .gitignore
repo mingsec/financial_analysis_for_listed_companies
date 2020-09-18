@@ -1,0 +1,5 @@
+env_FALC/
+__pycache__/
+.vscode
+.git
+*.pyc
