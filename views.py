@@ -1,3 +1,6 @@
+import os
+import time
+
 import pandas
 import requests
 import pymysql
@@ -9,9 +12,9 @@ def get_financial_statement(statement_type_code, com_code):
     """从163股票网站下载特定单位的财务报表,同时对下载的财务报表进行数据清洗，并转成一维数据
     参数
     ----------
-    statement_type_code: int
+    statement_type_code: str
         可供下载的报表类：1 - 资产负债表； 2 - 利润表； 3 - 现金流量表； 4 - 公司资料
-    com_code: int
+    com_code: str
         上市公司的在证券市场上的6位代码
         
     返回值
@@ -26,17 +29,17 @@ def get_financial_statement(statement_type_code, com_code):
     if statement_type_code == '1':
         statement_type = 'zcfzb'
         statement_name = '资产负债表'
-        database_table_type = 'FD'
+        database_table_type = 'BS'
         front_name = 'BS-'
     elif statement_type_code == '2':
         statement_type = 'lrb'
         statement_name = '利润表'
-        database_table_type = 'FD'
+        database_table_type = 'PL'
         front_name = 'PL-'
     elif statement_type_code == '3':
         statement_type = 'xjllb'
         statement_name = '现金流量表'
-        database_table_type = 'FD'
+        database_table_type = 'CF'
         front_name = 'CF-'
     else:
         print("不支持的报表类型！")
@@ -51,6 +54,7 @@ def get_financial_statement(statement_type_code, com_code):
         print("数据下载完毕！")
     except :
         print("该公司信息不存在，请检查输入的公司代码是否正确。")
+        return
     
     """ 整理数据格式 """
     print("开始处理数据...")
@@ -207,31 +211,31 @@ def write_data_to_database(date_tables):
 
     """ 配置 SQL 插入语句 """
     # 配置 financial_data 表更新 SQL 语句      
-    SQL_FD = "INSERT INTO financial_data(公司代码, 报告日期, 科目名称, 值) VALUES ('%s','%s','%s','%s')"
+    # SQL_FD = f"INSERT INTO { table_name }({ fileds })financial_data(公司代码, 报告日期, 科目名称, 值) VALUES ({ field_values })('%s','%s','%s','%s')"
     # 配置 company_information 表更新 SQL 语句 
-    SQL_CI = "INSERT INTO company_information(公司代码, 组织形式, 地域, 中文简称, 办公地址,\
-                                              公司全称, 公司电话, 英文名称, 公司电子邮箱, 注册资本,\
-                                              董事长, 员工人数, 董事会秘书, 法人代表, 董秘电话,\
-                                              总经理, 董秘传真, 公司网址, 董秘邮箱, 信息披露网址,\
-                                              信息披露报纸名称, 主营业务, 经营范围, 公司沿革) VALUES ('%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s')"
+    #SQL_CI = "INSERT INTO company_information(公司代码, 组织形式, 地域, 中文简称, 办公地址,\
+    #                                          公司全称, 公司电话, 英文名称, 公司电子邮箱, 注册资本,\
+    #                                          董事长, 员工人数, 董事会秘书, 法人代表, 董秘电话,\
+    #                                          总经理, 董秘传真, 公司网址, 董秘邮箱, 信息披露网址,\
+    #                                          信息披露报纸名称, 主营业务, 经营范围, 公司沿革) VALUES ('%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s')"
     # 配置 IPO_information 表更新 SQL 语句 
-    SQL_II = "INSERT INTO IPO_information(公司代码, 成立日期, 上市日期, 发行方式, 面值,\
-                                          发行数量, 发行价格, 募资资金总额, 发行费用, 发行中签率,\
-                                          发行市盈率, 发行后每股收益, 发行后每股净资产, 上市首日开盘价, 上市首日收盘价,\
-                                          上市首日换手率, 主承销商, 上市保荐人, 会计师事务所) VALUES ('%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s', '%s',\
-                                                                                                  '%s', '%s', '%s', '%s')"
+    #SQL_II = "INSERT INTO IPO_information(公司代码, 成立日期, 上市日期, 发行方式, 面值,\
+    #                                      发行数量, 发行价格, 募资资金总额, 发行费用, 发行中签率,\
+    #                                      发行市盈率, 发行后每股收益, 发行后每股净资产, 上市首日开盘价, 上市首日收盘价,\
+    #                                      上市首日换手率, 主承销商, 上市保荐人, 会计师事务所) VALUES ('%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s', '%s',\
+    #                                                                                              '%s', '%s', '%s', '%s')"
     # 配置 board_of_directors 表更新 SQL 语句 
-    SQL_BD = "INSERT INTO board_of_directors(公司代码, 更新日期, 姓名, 职务, 起止时间, 持股数_万股, 报酬_元) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')"
+    #SQL_BD = "INSERT INTO board_of_directors(公司代码, 更新日期, 姓名, 职务, 起止时间, 持股数_万股, 报酬_元) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')"
     # 配置 revenue_data 表更新 SQL 语句 
-    SQL_RD = "INSERT INTO revenue_data(公司代码, 报告日期, 分类维度, 分类名称, 收入_万元, 成本_万元, 利润_万元, 毛利率, 利润占比) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')"
+    #SQL_RD = "INSERT INTO revenue_data(公司代码, 报告日期, 分类维度, 分类名称, 收入_万元, 成本_万元, 利润_万元, 毛利率, 利润占比) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')"
     # 配置 employees_data 表更新 SQL 语句 
-    SQL_ED = "INSERT INTO employees_data(公司代码, 报告日期, 分类维度, 分类名称, 员工人数, 员工占比) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
+    #SQL_ED = "INSERT INTO employees_data(公司代码, 报告日期, 分类维度, 分类名称, 员工人数, 员工占比) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
 
     """ 创建数据库连接及游标 """
     FADB = pymysql.connect(
@@ -239,61 +243,93 @@ def write_data_to_database(date_tables):
         port=3306, 
         user='root', 
         passwd='330715', 
-        db='financial_analysis_of_listed_companies')
+        db='financial_analysis_for_listed_companies')
     cursor = FADB.cursor()
     
-    #将数据写入数据库
+    """ 将数据写入数据库 """
+    print("开始向数据库写入数据...")
     for table in date_tables:
-        table_type = table[0]
-        data = table[1]
-
-        if table_type == 'FD':
-            SQL = SQL_FD
-            data_type = "财务数据"
-        elif table_type == 'CI':
-            SQL = SQL_CI
+        # 根据表格类型确定待写入数据的表名、字段名及字段值数量
+        if table[0] == 'BS':
+            table_name = 'financial_data'
+            fileds = '公司代码, 报告日期, 科目名称, 值'
+            field_values = r'%s, %s, %s, %s'
+            data_type = "资产负债表数据"
+        elif table[0] == 'PL':
+            table_name = 'financial_data'
+            fileds = '公司代码, 报告日期, 科目名称, 值'
+            field_values = r'%s, %s, %s, %s'
+            data_type = "利润表数据"
+        elif table[0] == 'CF':
+            table_name = 'financial_data'
+            fileds = '公司代码, 报告日期, 科目名称, 值'
+            field_values = r'%s, %s, %s, %s'
+            data_type = "现金流量表数据"
+        elif table[0] == 'CI':
+            table_name = 'company_information'
+            fileds = '公司代码, 组织形式, 地域, 中文简称, 办公地址, 公司全称, 公司电话, 英文名称, 公司电子邮箱,  注册资本, \
+                董事长, 员工人数, 董事会秘书, 法人代表, 董秘电话, 总经理, 董秘传真, 公司网址, 董秘邮箱, 信息披露网址, \
+                信息披露报纸名称, 主营业务, 经营范围, 公司沿革'
+            field_values = r'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s'
             data_type = "公司信息数据"
-        elif table_type == 'II':
-            SQL = SQL_II
+        elif table[0] == 'II':
+            table_name = 'IPO_information'
+            fileds = '公司代码, 成立日期, 上市日期, 发行方式, 面值, 发行数量, 发行价格, 募资资金总额, 发行费用, 发行中签率, \
+                发行市盈率, 发行后每股收益, 发行后每股净资产, 上市首日开盘价, 上市首日收盘价, 上市首日换手率, 主承销商, 上市保荐人, 会计师事务所'
+            field_values = r'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s'
             data_type = "IPO信息数据"
-        elif table_type == 'BD':
-            SQL = SQL_BD
+        elif table[0] == 'BD':
+            table_name = 'board_of_directors'
+            fileds = '公司代码, 更新日期, 姓名, 职务, 起止时间, 持股数_万股, 报酬_元'
+            field_values = r'%s, %s, %s, %s, %s, %s, %s'
             data_type = "董事会成员信息数据"
-        elif table_type == 'RD':
-            SQL = SQL_RD
+        elif table[0] == 'RD':
+            table_name = 'revenue_data'
+            fileds = '公司代码, 报告日期, 分类维度, 分类名称, 收入_万元, 成本_万元, 利润_万元, 毛利率, 利润占比'
+            field_values = r'%s, %s, %s, %s, %s, %s, %s, %s, %s'
             data_type = "收入数据"
-        elif table_type == 'ED':
-            SQL = SQL_ED
+        elif table[0] == 'ED':
+            table_name = 'employees_data'
+            fileds = '公司代码, 报告日期, 分类维度, 分类名称, 员工人数, 员工占比'
+            field_values = r'%s, %s, %s, %s, %s, %s'
             data_type = "职工数据"
         
-        print("开始向数据库写入" + data_type + "...")
-        if table_type == 'CI' or table_type == 'II':
-            cursor.executemany(SQL, data)
-        else:
-            for item in data:
-                cursor.executemany(SQL, item)
+        # 向数据库写入数据
+        print("..." + data_type + "写入完毕")
+        cursor.executemany(f"INSERT INTO { table_name }({ fileds }) VALUES ({ field_values })", table[1])
 
-    #向数据库提交操作并关闭数据库连接
+    """ 向数据库提交操作并关闭数据库连接 """
     FADB.commit()
     FADB.close()
     print("数据保存成功！")
 
 
 def get_enterprise_information(statement_type_code, com_code):
-    '''从163股票网站下载特定单位的企业信息，并对其进行清洗
+    """从163股票网站下载特定单位的企业信息，并对其进行清洗
     参数
     ----------
-    statement_type_code: int
+    statement_type_code: str
         可供下载的报表类：1 - 资产负债表； 2 - 利润表； 3 - 现金流量表； 4 - 公司资料
-    com_code: int
+    com_code: str
         上市公司的在证券市场上的6位代码
         
     返回值
     -------
-    str
-        返回下载完的公司资料的文件名
-    '''
+    data_list:list
+        返回下载完的公司资料的数据列表,列表格式为：[["表类型"，[[记录1],[记录2]...]],[...]]
+        [
+            ["表类型"，[
+                [记录1],
+                [记录2],...]
+            ],
+            [...]
+        ]
+    """
 
+    """ 保存返回数据的空列表 """
+    enterprise_information =[]
+
+    """ 判断调用的下载函数是否正确 """
     if statement_type_code == '4':
         statement_type = 'gszl'
     else:
@@ -309,7 +345,9 @@ def get_enterprise_information(statement_type_code, com_code):
         print("数据下载完毕！")
     except:
         print("该公司信息不存在，请检查输入的公司代码是否正确。")
+        return 
     
+    print("开始处理数据...")
 
     """ 初步处理数据 """
     # 获取初始化页面，用于后续解析
@@ -333,123 +371,213 @@ def get_enterprise_information(statement_type_code, com_code):
     report_date_result = report_date_results.find('span')
     report_date = report_date_result.string[-10:]
 
-    enterprise_information =[]
-
     """ 处理公司信息数据 """
-    print("开始处理公司信息数据...")
     company_information = [com_code]
     # 以str类型（decode()）输出（tostring(））修正后的HTML代码
     company_information_table = etree.tostring(tables_one[0], encoding='utf-8').decode()
     # 获取公司信息表格中的数据
     company_information_df = pandas.read_html(company_information_table, encoding='utf-8', header=None)[0]
+    # 将空值替换为 “--”
+    company_information_df.fillna('--', inplace=True)
+    # # 收集 dataframe 中需要的数据
     for i in range(0, 10):
         company_information.append(company_information_df.iloc[i, 1])
         company_information.append(company_information_df.iloc[i, 3])
     for i in range(10, company_information_df.shape[0]):
         company_information.append(company_information_df.iloc[i, 1])
-    # 去除数据中的异常字符
+    # 去除数据中的异常字符空格 ' ' 和换行符 '\r\n' 等
     for i in range(1, len(company_information)):
-        # 将空值替换为 “--”
-        if company_information[i] == '\n' or  company_information[i] == None or  company_information[i] == '' or company_information[i] == 'nan':
-            company_information[i] = '--'
-        # 删除单元格中的空格 ' ' 和 '\r\n' ,将 “"” 和 “'” 等替换为空格 “ ”
-        if isinstance(company_information[i], str):
-            company_information[i] = company_information[i].replace(' ', '')
-            company_information[i] = company_information[i].replace('\r\n', '')
-            company_information[i] = company_information[i].replace('"', ' ')
-            company_information[i] = company_information[i].replace("'", ' ')
-    enterprise_information.append(['CI', [company_information]])
-    print("公司信息数据处理完毕！")
+        # 将值强制转换为str
+        company_information[i] = str(company_information[i])
+        company_information[i] = company_information[i].replace(' ', '')
+        company_information[i] = company_information[i].replace('\r\n', '')
+        company_information[i] = company_information[i].replace('"', ' ')
+        company_information[i] = company_information[i].replace("'", ' ')
+    enterprise_information.append(['CI', [company_information,]])
+    print("...公司信息数据处理完毕")
 
     """ 处理IPO信息数据 """
-    print("开始处理IPO信息数据...")
     IPO_information = [com_code]
     # 以str类型（decode()）输出（tostring(））修正后的HTML代码
     IPO_information_table = etree.tostring(tables_one[1], encoding='utf-8').decode()
     # 获取 IPO 信息表格中的数据
     IPO_information_df = pandas.read_html(IPO_information_table, encoding='utf-8', header=None)[0]
+    # 将空值替换为 “--”
+    IPO_information_df.fillna('--', inplace=True)
+    # 收集 dataframe 中需要的数据
     for i in range(0, IPO_information_df.shape[0]):
         IPO_information.append(IPO_information_df.iloc[i,1])
-    # 去除数据中的异常字符
+    # 去除数据中的异常字符空格 ' ' 和换行符 '\r\n' 等
     for i in range(1, len(IPO_information)):
-        # 将空值替换为 “--”
-        if IPO_information[i] == '\n' or IPO_information[i] == None or IPO_information[i] == '' or IPO_information[i] == 'nan':
-            IPO_information[i] = '--'
-        # 删除单元格中的空格 ' ' 和 '\r\n'
-        if isinstance(IPO_information[i], str):
-            IPO_information[i] = IPO_information[i].replace(' ', '')
-            IPO_information[i] = IPO_information[i].replace('\r\n', '')
-    enterprise_information.append(['II', [IPO_information]])
-    print("IPO信息数据处理完毕！")
+        # 将值强制转换为str
+        IPO_information[i] = str(IPO_information[i])
+        IPO_information[i] = IPO_information[i].replace(' ', '')
+        IPO_information[i] = IPO_information[i].replace('\r\n', '')
+    enterprise_information.append(['II', [IPO_information,]])
+    print("...IPO信息数据处理完毕")
     
     """ 处理董事会成员信息数据 """
-    print("开始处理董事会成员信息数据...")
     board_of_directors = []
     # 以str类型（decode()）输出（tostring(））修正后的HTML代码
     board_of_directors_table = etree.tostring(tables_two[0], encoding='utf-8').decode()
     # 获取董事会成员信息表格中的数据
     board_of_directors_df = pandas.read_html(board_of_directors_table, encoding='utf-8', header=None)[0]
+    # 将空值替换为 “--”
+    board_of_directors_df.fillna('--', inplace=True)
+    # 收集 dataframe 中需要的数据
     for i in range(0, board_of_directors_df.shape[0]):
         board_of_directors.append([com_code, last_update_date] + list(board_of_directors_df.iloc[i]))
-    # 去除数据中的异常字符   
+    # 去除数据中的异常字符空格 ' ' 和换行符 '\r\n' 等 
     for i in range(0, len(board_of_directors)):
         for j in range(0, len(board_of_directors[i])):
-            # 将空值替换为 “--”
-            if board_of_directors[i][j] == '\n' or board_of_directors[i][j] == None or board_of_directors[i][j] == '' or board_of_directors[i][j] == 'nan':
-                board_of_directors[i][j] = '--'
-            # 删除单元格中的空格 ' ' 和 '\r\n'
-            if isinstance(board_of_directors[i][j], str):
-                board_of_directors[i][j] = board_of_directors[i][j].replace(' ', '')
-                board_of_directors[i][j] = board_of_directors[i][j].replace('\r\n', '')
+            # 将值强制转换为str
+            board_of_directors[i][j] = str(board_of_directors[i][j])
+            board_of_directors[i][j] = board_of_directors[i][j].replace(' ', '')
+            board_of_directors[i][j] = board_of_directors[i][j].replace('\r\n', '')
     enterprise_information.append(['BD', board_of_directors])
-    print("董事会成员信息数据处理完毕！")
+    print("...董事会成员信息数据处理完毕")
 
     """ 收入数据 """
-    print("开始处理收入数据...")
     revenue_data = []
     for i in range(1, 4):
         # 以str类型（decode()）输出（tostring(））修正后的HTML代码
         revenue_data_table = etree.tostring(tables_two[i], encoding='utf-8').decode()
         # 获取收入数据表格中的数据
         revenue_data_df = pandas.read_html(revenue_data_table, encoding='utf-8', header=None)[0]
+        # 将空值替换为 “--”
+        revenue_data_df.fillna('--', inplace=True)
+        # 收集 dataframe 中需要的数据
         table_type = revenue_data_df.columns[0]
         for i in range(0, revenue_data_df.shape[0]):
             revenue_data.append([com_code, report_date, table_type] + list(revenue_data_df.iloc[i]))
-    # 去除数据中的异常字符   
+    # 去除数据中的异常字符空格 ' ' 和换行符 '\r\n' 等  
     for i in range(0, len(revenue_data)):
         for j in range(0, len(revenue_data[i])):
-            # 将空值替换为 “--”
-            if revenue_data[i][j] == '\n' or revenue_data[i][j] == None or revenue_data[i][j] == '' or revenue_data[i][j] == 'nan':
-                revenue_data[i][j] = '--'
-            # 删除单元格中的空格 ' ' 和 '\r\n'.
-            if isinstance(revenue_data[i][j], str):
-                revenue_data[i][j] = revenue_data[i][j].replace(' ', '')
-                revenue_data[i][j] = revenue_data[i][j].replace('\r\n', '')
+            # 将值强制转换为str
+            revenue_data[i][j] = str(revenue_data[i][j])
+            revenue_data[i][j] = revenue_data[i][j].replace(' ', '')
+            revenue_data[i][j] = revenue_data[i][j].replace('\r\n', '')
     enterprise_information.append(['RD', revenue_data])
-    print("收入数据处理完毕！")
+    print("...收入数据处理完毕")
 
     """ 处理人员数据 """
-    print("开始处理人员数据...")
     employees_data = []
     for i in range(4, len(tables_two)):
         # 以str类型（decode()）输出（tostring(））修正后的HTML代码
         employees_data_table = etree.tostring(tables_two[i], encoding='utf-8').decode()
         # 获取收入数据表格中的数据
         employees_data_df = pandas.read_html(employees_data_table, encoding='utf-8', header=None)[0]
+        # 将空值替换为 “--”
+        employees_data_df.fillna('--', inplace=True)
+        # 收集 dataframe 中需要的数据
         table_type = employees_data_df.columns[0]
         for i in range(0, employees_data_df.shape[0]):
             employees_data.append([com_code, report_date, table_type] +  list(employees_data_df.iloc[i]))
-    # 去除数据中的异常字符   
+    # 去除数据中的异常字符空格 ' ' 和换行符 '\r\n' 等   
     for i in range(0, len(employees_data)):
         for j in range(0, len(employees_data[i])):
-            # 将空值替换为 “--”
-            if employees_data[i][j] == '\n' or employees_data[i][j] == None or employees_data[i][j] == '' or employees_data[i][j] == 'nan':
-                employees_data[i][j] = '--'
-            # 删除单元格中的空格 ' ' 和 '\r\n'.
-            if isinstance(employees_data[i][j], str):
-                employees_data[i][j] = employees_data[i][j].replace(' ', '')
-                employees_data[i][j] = employees_data[i][j].replace('\r\n', '')
+            employees_data[i][j] = str(employees_data[i][j])
+            employees_data[i][j] = employees_data[i][j].replace(' ', '')
+            employees_data[i][j] = employees_data[i][j].replace('\r\n', '')
     enterprise_information.append(['ED', employees_data])
-    print("人员数据处理完毕！")
+    print("...人员数据处理完毕")
+
+    print("公司资料数据处理完毕...")
 
     return enterprise_information
+
+
+def check_list():
+    """ 检查下载失败的公司代码
+
+    检查下载失败的公司代码是否保存在不存在的公司代码中，
+    同时将非因不存在的公司代码而导致下载失败或保存失败的数据存入 new_problem_list.txt 文档中
+
+    参数
+    -------
+    无
+        
+    返回值
+    -------
+    无
+
+    """
+
+    """ 获取不存在的公司代码清单 """
+    not_exist_list = []
+    with open("not_exist_list.txt", "r") as filetxt:
+        for line in filetxt.readlines():
+            # 去除字符串末尾的 ‘\n’，并追加至 not_exist_list 列表中
+            not_exist_list.append(line.strip('\n'))
+
+    """ 获取下载失败的公司代码清单 """
+    problem_list = []
+    with open("problem_list.txt", "r") as filetxt:
+        for line in filetxt.readlines():
+            # 去除字符串末尾的 ‘\n’，并按 ‘ ’ 将字符串切分成 list， 然后追加至 problem_list 列表中
+            problem_list.append(line.strip('\n').split(' '))
+
+    """ 生成非因公司代码不存在而下载失败的公司代码清单 """
+    new_problem_list = []
+    for i in range(len(problem_list)):
+        if problem_list[i][0] not in not_exist_list:
+            new_problem_list.append(problem_list[i])
+    
+    """ 保存list中的数据 """
+    with open("new_problem_list.txt", "w") as filetxt:
+        for item in new_problem_list:
+            filetxt.write(item[0] + " " + item[1] + "\n")
+
+
+def download_data(download_list):
+    """ 调用函数从网易股票网站下载数据
+
+    根据提供的 download_list 参数，选择不同的爬虫函数从网易股票网站下载数据，并将清理格式后的数据存入数据库，
+    同时将下载失败或保存失败的数据存入 problem_list.txt 文档中
+
+    参数
+    -------
+    download_list: list
+        可公司资料的数据列表，列表格式为：[["公司代码", "报表类型"],[记录2],[...]]
+        
+    返回值
+    -------
+    无
+
+    """
+
+    problem_list = []
+    
+    if download_list:
+        for item in download_list:
+            try:
+                if item[1] == '4':
+                    write_data_to_database(get_enterprise_information(item[1], item[0]))
+                else:
+                    write_data_to_database(get_financial_statement(item[1], item[0]))
+            except:
+                problem_list.append(item[0] + " " + item[1]) 
+            # 等待 5 秒
+            time.sleep(5) 
+            # 清除屏幕信息
+            os.system('cls')
+    else:
+        continue_or_not = True
+        while continue_or_not:
+            com_code = input("请输入待下载报表的单位的公司代码：")
+            statement_type_code = input("报表类型：\n 1 - 资产负债表\n 2 - 利润表\n 3 - 现金流量表\n 4 - 公司资料\n 请输入需下载的报表编号：")
+        
+            if statement_type_code == '4' : 
+                write_data_to_database(get_enterprise_information(statement_type_code, com_code))
+            else:
+                write_data_to_database(get_financial_statement(statement_type_code, com_code))
+
+            is_continue = input("是否继续（y/n)：")
+            if is_continue == 'n' or is_continue == 'N':
+                continue_or_not = False
+
+            os.system('cls')
+    
+    with open("problem_list.txt", "w") as filetxt:
+        for item in problem_list:
+            filetxt.write(item + "\n")
