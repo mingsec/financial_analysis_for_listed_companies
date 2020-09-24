@@ -581,3 +581,5 @@ def download_data(download_list):
     with open("problem_list.txt", "w") as filetxt:
         for item in problem_list:
             filetxt.write(item + "\n")
+
+
